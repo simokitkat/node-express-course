@@ -492,3 +492,126 @@ const server = http.createServer((req, res) => {
 
 server.listen(5000);
 ```
+
+## NPM (Node Package Manager)
+
+Beyond your own modules and Node's built-in modules, there is a third, massive resource: **NPM**, or the Node Package Manager. It's the world's largest "code store".
+
+- **What it is:** A vast online registry of free, reusable code packages written by other developers. You can find it at **npmjs.com**.
+- **What it's for:** Instead of building everything from scratch (like a slider), you can find a package and add it to your project with a single command.
+- **Terminology:** The terms **package**, **module**, and **dependency** are often used interchangeably to mean the same thing.
+- **Quality:** There is **no quality control**. Anyone can publish a package. A good indicator of a package's quality and security is its **weekly download count**.
+
+NPM is automatically installed when you install Node.js. You can check your version by running `npm --version` in your terminal.
+
+### The `package.json` File (Project Manifest)
+
+Before you can install packages, your project needs a `package.json` file. This is a "manifest file" that stores important information about your project.
+
+There are two ways to create it:
+
+1.  `npm init`: This runs a step-by-step questionnaire in your terminal.
+2.  `npm init -y`: This is the faster way. It skips all questions and generates a `package.json` file with all the default values.
+
+### Installing Dependencies (Local vs. Global)
+
+#### 1\. Local Dependencies (Most Common)
+
+These are packages that your _specific project_ needs to run (e.g., `lodash`, `express`).
+
+- **Command:** `npm install <packageName>` (or `npm i <packageName>`).
+- **What it does:**
+  1.  It adds the package to a `dependencies` list inside your `package.json` file.
+  2.  It creates a folder called `node_modules` in your project.
+  3.  It downloads the package's code (and any dependencies _it_ needs) into that `node_modules` folder.
+
+#### 2\. Dev Dependencies
+
+These are packages used only for _development_, not for the app to run in production (e.g., testing libraries, formatters, or `nodemon`).
+
+- **Command:** `npm install <packageName> -D` or `npm install <packageName> --save-dev`.
+- This adds the package to a separate `devDependencies` list in `package.json`.
+
+#### 3\. Global Dependencies
+
+These are tools you want to use from your terminal in _any_ project.
+
+- **Command:** `npm install <packageName> -g`.
+- (On Mac/Linux, you may need to run `sudo npm install <packageName> -g` for permissions).
+
+### Using Installed Packages
+
+Once you've installed a package (like `lodash`), you can `require` it in your app _without_ a file path. Node knows to look for it in `node_modules`.
+
+```javascript
+// You must run `npm install lodash` first!
+const _ = require("lodash");
+
+const items = [1, [2, [3, [4]]]];
+const newItems = _.flattenDeep(items);
+console.log(newItems);
+// Output: [1, 2, 3, 4]
+```
+
+### Sharing Code (The `node_modules` and `.gitignore` Rule)
+
+This is a critical concept for working with Git.
+
+- The `node_modules` folder is often **massive** (it can be 9MB or much, much larger).
+- You **NEVER** push the `node_modules` folder to GitHub.
+- **The Fix:**
+  1.  Create a file in your project's root named `.gitignore`.
+  2.  Inside this file, add a new line: `/node_modules`. This tells Git to ignore the folder.
+- **How it Works:**
+  1.  You push your code (which includes `package.json` but _not_ `node_modules`) to GitHub.
+  2.  Another developer downloads (clones) your project. They will not have a `node_modules` folder.
+  3.  They simply run one command: `npm install`.
+  4.  NPM will read the `dependencies` list in `package.json` and automatically download all the correct packages, recreating the `node_modules` folder for them.
+
+### Useful NPM Features
+
+#### NPM Scripts
+
+The `scripts` object in your `package.json` lets you create command-line shortcuts for your project.
+
+- For example, instead of typing `node app.js`, you can add a script:
+  ```json
+  "scripts": {
+    "start": "node app.js"
+  }
+  ```
+- Now you can just run `npm start` to run your file.
+
+#### `nodemon`: Your First Dev Dependency
+
+`nodemon` is a tool that automatically restarts your application when you save a file.
+
+1.  Install it as a dev dependency: `npm i nodemon -D`.
+2.  Add a `dev` script to `package.json`:
+    ```json
+    "scripts": {
+      "start": "node app.js",
+      "dev": "nodemon app.js"
+    }
+    ```
+3.  Now, run `npm run dev`. (You must use the `run` command for custom scripts like "dev"). Your server will now auto-restart on every file change.
+
+#### `npx`: Node Package Execute
+
+`npx` is a package _runner_ that comes with NPM 5.2 and higher.
+
+- It allows you to **run** a package's command _without_ installing it globally.
+- This is the modern way to use tools like `create-react-app`. Instead of running `npm i -g create-react-app` and _then_ running `create-react-app`, you just run `npx create-react-app my-app` one time.
+- This keeps your global environment clean.
+
+#### Uninstalling Packages
+
+- To remove a package: `npm uninstall <packageName>`.
+- **The "Nuclear" Option:** If your project is misbehaving, delete the `node_modules` folder and the `package-lock.json` file, then run `npm install` to rebuild everything from scratch.
+
+### The `package-lock.json` File (Version Control)
+
+You may have noticed a `package-lock.json` file appears when you install packages. This file is very important.
+
+- **Problem:** `package.json` often uses semantic versioning (e.g., `^4.17.1`). The `^` means "it's okay to install any _minor_ or _patch_ update" (e.g., `4.18.0` or `4.17.2`). This can lead to your app breaking if a new version has a bug.
+- **Solution:** `package-lock.json` **locks** the _exact_ versions of all your dependencies (and their dependencies). This ensures that you, your teammates, and your production server are all running the _exact same_ code.
