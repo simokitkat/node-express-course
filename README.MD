@@ -218,3 +218,277 @@ require("./7-mind-grenade.js");
 When you run `node app.js`, your console will show **"the sum is : 15"**.
 
 **Why?** When you `require` a module, you aren't just _accessing_ its exports; you are **invoking the file**. Any code in the global scope of that file (like the `addValues()` function call) will run the moment it is imported.
+Here's the summary for the next section on built-in modules.
+
+## Built-In Modules
+
+Node.js comes with many powerful, built-in modules that you can use freely in your apps. This section will cover the general setup for using them and introduce a few of the most important ones, including OS, Path, File System (FS), and HTTP.
+
+The full list of modules is massive, so we won't cover every property and method. If you want to learn more, the official Node.js documentation (`nodejs.org`) has extremely detailed information on every module.
+
+### General Setup for Built-in Modules
+
+To use a built-in module, you must `require` it by its name.
+
+- **You do not need to install it**.
+- **You do not use `./`**. Unlike your own modules, you just use the module's name in the string (e.g., `require('os')`). Node knows this means you are looking for a built-in module.
+
+```javascript
+// Example of requiring a built-in module
+const os = require("os");
+```
+
+Once imported, you can access all its methods from the variable (e.g., `os.uptime()`) or destructure specific methods you need.
+
+### 1\. `os` (Operating System) Module
+
+This module provides properties and methods for interacting with the operating system and the server.
+
+- `const os = require('os')`
+- **Key Methods:**
+  - `os.userInfo()`: Returns information about the current user, like their home directory.
+  - `os.uptime()`: Returns the system uptime (how long the computer has been running) in seconds.
+  - `os.type()`: Returns the name of the operating system (e.g., "Darwin" for macOS, "Windows_NT" for Windows).
+  - `os.release()`: Returns the operating system's release version.
+  - `os.totalmem()`: Returns the total amount of system memory in bytes.
+  - `os.freemem()`: Returns the amount of free system memory in bytes.
+
+### 2\. `path` Module
+
+This module is very useful as it allows you to interact with file paths in a reliable, platform-independent way.
+
+- `const path = require('path')`
+- **Key Properties & Methods:**
+  - `path.sep`: Returns the platform's specific path separator (e.g., `/` for Mac/Linux, `\` for Windows).
+  - `path.join()`: Joins a sequence of path segments together using the platform-specific separator. It also returns a "normalized" path, which cleans up extra slashes (`//`) automatically.
+    - _Example:_ `const filePath = path.join('/content/', 'subfolder', 'test.txt')`.
+  - `path.basename(filePath)`: Returns the last portion of a path (e.g., `test.txt`).
+  - `path.resolve()`: This is a critical method. It resolves a sequence of paths into an **absolute path**. This is essential because the path to a file on your local machine will be different from the path on a production server. Using `__dirname` with `path.resolve` ensures you always have a correct, absolute path to your resources.
+    - _Example:_ `const absolute = path.resolve(__dirname, 'content', 'subfolder', 'test.txt')`.
+
+### 3\. `fs` (File System) Module
+
+Node.js has a built-in module for interacting with the file system, named `fs`.
+
+This module has two "flavors" for its methods:
+
+1.  **Synchronous (Blocking):** The operation runs, and your code stops and waits for it to finish before moving to the next line.
+2.  **Asynchronous (Non-blocking):** The operation starts, and your code immediately moves to the next line, without waiting. The operation's result is handled later in a callback function.
+
+We will cover both, starting with the synchronous (blocking) approach.
+
+### File System: Synchronous (Sync) Methods
+
+These methods are **blocking**. They are generally _not_ recommended for servers because they stop all other code from executing, which means your server cannot handle any other users until the task is complete.
+
+You can import (destructure) the specific methods you need from the `fs` module.
+
+```javascript
+const { readFileSync, writeFileSync } = require("fs");
+```
+
+#### `readFileSync(path, encoding)`
+
+This method reads the contents of a file.
+
+- **`path`**: The path to the file you want to read (e.g., `./content/first.txt`).
+- **`encoding`**: Tells Node how to interpret the file's data. Without this, you'll get a raw `buffer`. Use `utf-8` for text files.
+
+```javascript
+// Read the contents of two files
+const first = readFileSync("./content/first.txt", "utf-8");
+const second = readFileSync("./content/second.txt", "utf-8");
+
+console.log(first, second);
+```
+
+#### `writeFileSync(path, value, [options])`
+
+This method writes content to a file.
+
+- **`path`**: The file you want to write to. If the file does not exist, Node will create it.
+- **`value`**: The content (e.g., a string) you want to write into the file.
+
+**By default, `writeFileSync` will completely overwrite the file's contents**.
+
+```javascript
+// This will create 'result-sync.txt' and put the content of 'first' and 'second' inside it
+writeFileSync(
+  "./content/result-sync.txt",
+  `Here is the result: ${first}, ${second}`
+);
+```
+
+To **append** to a file instead of overwriting it, pass a third argument (an options object) with the `flag` property set to `'a'`.
+
+```javascript
+// This will ADD "hello world" to the end of the file
+writeFileSync("./content/result-sync.txt", "hello world", { flag: "a" });
+```
+
+### File System: Asynchronous (Async) Methods
+
+This is the **non-blocking** approach and is what you should use for servers.
+
+These methods work by using **callback functions**. A callback is a function you provide that Node will run _only when the task is complete_.
+
+```javascript
+const { readFile, writeFile } = require("fs");
+```
+
+#### `readFile(path, encoding, callback)`
+
+- **`path` / `encoding`**: Same as the sync version.
+- **`callback`**: The function to run when the file has been read. This callback function _must_ accept two parameters: `(err, result)`.
+  - **`err`**: Will be `null` if everything worked, or an error object if it failed.
+  - **`result`**: The content of the file (if successful).
+
+**Important:** Always check for the error first.
+
+```javascript
+console.log("start");
+
+readFile("./content/first.txt", "utf-8", (err, result) => {
+  if (err) {
+    console.log(err);
+    return;
+  }
+  console.log(result);
+  console.log("done with this task");
+});
+
+console.log("starting next task");
+```
+
+### Sync vs. Async: The "Why"
+
+The difference in execution order is the most important concept in Node.js.
+
+- **When you run the _Sync_ code:**
+  1.  `console.log('start')`
+  2.  `readFileSync` **blocks** the code. The app _waits_.
+  3.  `console.log('done with this task')`
+  4.  `console.log('starting next task')`
+- **When you run the _Async_ code:**
+  1.  `console.log('start')`
+  2.  `readFile` starts and **"offloads"** its task.
+  3.  The code _does not wait_. It immediately continues to the next line.
+  4.  `console.log('starting next task')`
+  5.  Sometime later, the file reading finishes. The callback function is _finally_ executed.
+  6.  `console.log(result)`
+  7.  `console.log('done with this task')`
+
+This non-blocking model allows your server to "offload" time-consuming tasks (like reading files or database queries) and continue serving other users in the meantime.
+
+#### The Problem: "Callback Hell"
+
+The async approach is better, but it has a major downside. What if you need to read one file, _then_ read a second file, _then_ write a third file?
+
+You are forced to nest your callbacks inside each other, creating a messy, hard-to-read "pyramid" structure.
+
+```javascript
+// This is "Callback Hell"
+readFile('./content/first.txt', 'utf-8', (err, result) => {
+  if (err) { ... }
+  const first = result;
+  readFile('./content/second.txt', 'utf-8', (err, result) => {
+    if (err) { ... }
+    const second = result;
+    writeFile('./content/result-async.txt', `...`, (err, result) => {
+      if (err) { ... }
+      console.log('Task complete');
+    });
+  });
+});
+```
+
+This nesting is a pain. Later, the course will show you how to solve this using **Promises** and **Async/Await**.
+
+### 4\. The `http` Module (Your First Web Server)
+
+This section covers the basics of the built-in `http` module, which is what allows Node.js to set up a web server.
+
+While a large part of the course will use **Express.js** (which is an abstraction, or a simpler way to work with the `http` module), it's important to understand the fundamentals first.
+
+### Basic Server Setup
+
+1.  **Require the module:**
+
+    ```javascript
+    const http = require("http");
+    ```
+
+2.  **Create the server:**
+    The `http.createServer()` method is used to create a server instance. This method takes a callback function that executes _every time_ a user hits your server.
+
+    This callback function provides two crucial parameters, commonly named `req` and `res`:
+
+    - `req` (Request): This object represents the **incoming request** from the client (e.g., the browser). It contains information like the URL the user is trying to access and the method (e.g., GET).
+    - `res` (Response): This object is what you use to **send a response back** to the client.
+
+3.  **Listen for requests:**
+    After creating the server, you must tell it to "listen" on a specific port. The port number is arbitrary in development (e.g., 5000), but it's the "door" that your server listens through.
+
+### Example: A Simple Server
+
+```javascript
+const http = require("http");
+
+const server = http.createServer((req, res) => {
+  // This code runs for every request
+
+  // 1. Write the response
+  res.write("Welcome to our homepage");
+
+  // 2. End the response (THIS IS MANDATORY)
+  res.end();
+});
+
+server.listen(5000);
+```
+
+To run this:
+
+1.  Save the code as `app.js`.
+2.  Run `node app.js` in your terminal.
+3.  Notice that your program does **not** exit. The server is now running and "listening" for requests.
+4.  Open your browser and go to `localhost:5000`. You will see "Welcome to our homepage".
+
+### Basic Routing with `req.url`
+
+You can send different responses based on the URL the user is visiting. This information is available in the `req.url` property.
+
+- The homepage (root) is `/`.
+- An "about" page would be `/about`.
+
+You can use an `if` statement to check the URL and send different content. You can also send HTML directly.
+
+```javascript
+const http = require("http");
+
+const server = http.createServer((req, res) => {
+  const url = req.url;
+
+  // Home Page
+  if (url === "/") {
+    res.end("Welcome to our home page");
+  }
+
+  // About Page
+  else if (url === "/about") {
+    res.end("Here is our short history");
+  }
+
+  // 404 - Page Not Found
+  else {
+    // You can write HTML directly in the response
+    res.end(`
+      <h1>Oops!</h1>
+      <p>We can't seem to find the page you are looking for</p>
+      <a href="/">back home</a>
+    `);
+  }
+});
+
+server.listen(5000);
+```
